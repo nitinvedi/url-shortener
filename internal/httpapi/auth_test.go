@@ -180,7 +180,7 @@ func TestLoginDoesNotRevealWhetherEmailExists(t *testing.T) {
 	if !strings.Contains(recorder.Body.String(), "email or password is incorrect") {
 		t.Errorf("unexpected generic login failure: %s", recorder.Body.String())
 	}
-	}
+}
 
 func TestHealthRoutesRemainAvailableWithAuth(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
