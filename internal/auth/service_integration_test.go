@@ -3,11 +3,11 @@ package auth
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/nitinvedi/url-shortener/internal/storage/postgres"
-	"github.com/nitinvedi/url-shortener/internal/user"
 )
 
 func TestRegistrationAndLoginWithPostgres(t *testing.T) {
@@ -77,4 +77,3 @@ func TestRegistrationAndLoginWithPostgres(t *testing.T) {
 	}
 }
 
-var _ = user.ErrNotFound
