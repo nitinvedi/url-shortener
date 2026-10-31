@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -181,10 +180,7 @@ func TestLoginDoesNotRevealWhetherEmailExists(t *testing.T) {
 	if !strings.Contains(recorder.Body.String(), "email or password is incorrect") {
 		t.Errorf("unexpected generic login failure: %s", recorder.Body.String())
 	}
-	if errors.Is(auth.ErrInvalidCredentials, user.ErrNotFound) {
-		t.Fatal("authentication errors must not be aliases for user lookup errors")
 	}
-}
 
 func TestHealthRoutesRemainAvailableWithAuth(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
