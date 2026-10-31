@@ -34,24 +34,31 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 	if len(cfg.JWTSigningKey) < 32 || cfg.JWTIssuer != "url-shortener" || cfg.JWTAudience != "url-shortener-api" {
 		t.Error("unexpected JWT defaults")
 	}
+	if cfg.RedisAddr != "localhost:6379" || cfg.RedisDB != 0 || cfg.RedisOperationTimeout != 250*time.Millisecond {
+		t.Errorf("unexpected Redis defaults: addr=%q db=%d timeout=%s", cfg.RedisAddr, cfg.RedisDB, cfg.RedisOperationTimeout)
+	}
 }
 
 func TestLoadFromParsesOverrides(t *testing.T) {
 	values := map[string]string{
-		"HTTP_ADDR":             "127.0.0.1:9090",
-		"PUBLIC_BASE_URL":       "https://sho.rt",
-		"HTTP_READ_TIMEOUT":     "20s",
-		"HTTP_SHUTDOWN_TIMEOUT": "3s",
-		"LOG_LEVEL":             "DEBUG",
-		"DATABASE_URL":          "postgresql://app:secret@db.internal:5432/shortener?sslmode=require",
-		"DB_MAX_OPEN_CONNS":     "40",
-		"DB_MAX_IDLE_CONNS":     "10",
-		"DB_CONN_MAX_LIFETIME":  "1h",
-		"DB_CONN_MAX_IDLE_TIME": "2m",
-		"DB_CONNECT_TIMEOUT":    "8s",
-		"JWT_SIGNING_KEY":       "0123456789abcdef0123456789abcdef",
-		"JWT_ISSUER":            "shortener-service",
-		"JWT_AUDIENCE":          "shortener-clients",
+		"HTTP_ADDR":               "127.0.0.1:9090",
+		"PUBLIC_BASE_URL":         "https://sho.rt",
+		"HTTP_READ_TIMEOUT":       "20s",
+		"HTTP_SHUTDOWN_TIMEOUT":   "3s",
+		"LOG_LEVEL":               "DEBUG",
+		"DATABASE_URL":            "postgresql://app:secret@db.internal:5432/shortener?sslmode=require",
+		"DB_MAX_OPEN_CONNS":       "40",
+		"DB_MAX_IDLE_CONNS":       "10",
+		"DB_CONN_MAX_LIFETIME":    "1h",
+		"DB_CONN_MAX_IDLE_TIME":   "2m",
+		"DB_CONNECT_TIMEOUT":      "8s",
+		"JWT_SIGNING_KEY":         "0123456789abcdef0123456789abcdef",
+		"JWT_ISSUER":              "shortener-service",
+		"JWT_AUDIENCE":            "shortener-clients",
+		"REDIS_ADDR":              "redis.internal:6380",
+		"REDIS_PASSWORD":          "redis-secret",
+		"REDIS_DB":                "2",
+		"REDIS_OPERATION_TIMEOUT": "400ms",
 	}
 	cfg, err := LoadFrom(func(key string) string { return values[key] })
 	if err != nil {
@@ -78,6 +85,10 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	if cfg.JWTSigningKey != values["JWT_SIGNING_KEY"] || cfg.JWTIssuer != values["JWT_ISSUER"] || cfg.JWTAudience != values["JWT_AUDIENCE"] {
 		t.Error("unexpected JWT configuration")
 	}
+	if cfg.RedisAddr != values["REDIS_ADDR"] || cfg.RedisPassword != values["REDIS_PASSWORD"] ||
+		cfg.RedisDB != 2 || cfg.RedisOperationTimeout != 400*time.Millisecond {
+		t.Error("unexpected Redis configuration")
+	}
 }
 
 func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
@@ -102,6 +113,10 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "public URL with credentials", values: map[string]string{"PUBLIC_BASE_URL": "https://user:pass@sho.rt"}},
 		{name: "public URL with path", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt/short"}},
 		{name: "public URL with query", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt?x=1"}},
+		{name: "invalid Redis address", values: map[string]string{"REDIS_ADDR": "not-a-host-port"}},
+		{name: "invalid Redis port", values: map[string]string{"REDIS_ADDR": "localhost:70000"}},
+		{name: "invalid Redis database", values: map[string]string{"REDIS_DB": "-1"}},
+		{name: "invalid Redis timeout", values: map[string]string{"REDIS_OPERATION_TIMEOUT": "0s"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

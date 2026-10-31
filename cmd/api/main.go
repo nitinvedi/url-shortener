@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nitinvedi/url-shortener/internal/auth"
+	rediscache "github.com/nitinvedi/url-shortener/internal/cache/redis"
 	"github.com/nitinvedi/url-shortener/internal/config"
 	"github.com/nitinvedi/url-shortener/internal/httpapi"
 	"github.com/nitinvedi/url-shortener/internal/link"
@@ -51,6 +52,17 @@ func run() error {
 	}
 	defer db.Close()
 
+	redisClient, err := rediscache.NewClient(
+		cfg.RedisAddr,
+		cfg.RedisPassword,
+		cfg.RedisDB,
+		cfg.RedisOperationTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize Redis client: %w", err)
+	}
+	defer redisClient.Close()
+
 	if err := postgres.Migrate(startupCtx, db); err != nil {
 		return fmt.Errorf("run database migrations: %w", err)
 	}
@@ -68,21 +80,33 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize authentication service: %w", err)
 	}
-	linkService, err := link.NewService(postgres.NewLinkRepository(db))
+	linkRepository := postgres.NewLinkRepository(db)
+	linkService, err := link.NewService(linkRepository)
 	if err != nil {
 		return fmt.Errorf("initialize URL service: %w", err)
 	}
+	redirectService, err := link.NewRedirectService(linkRepository, redisClient, logger)
+	if err != nil {
+		return fmt.Errorf("initialize redirect service: %w", err)
+	}
 
-	handler := httpapi.NewHandlerWithServices(
+	handler := httpapi.NewHandlerWithRedirects(
 		logger,
 		authService,
 		tokenManager,
 		linkService,
+		redirectService,
+		nil, // the non-blocking analytics recorder is wired in the analytics milestone
 		cfg.PublicBaseURL,
 		httpapi.DependencyCheck{
 			Name:     "postgres",
 			Required: true,
 			Check:    db.PingContext,
+		},
+		httpapi.DependencyCheck{
+			Name:     "redis",
+			Required: false,
+			Check:    redisClient.Ping,
 		},
 	)
 

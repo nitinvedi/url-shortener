@@ -7,8 +7,11 @@ import (
 )
 
 var (
-	ErrNotFound  = errors.New("short URL not found")
-	ErrCodeTaken = errors.New("short code already exists")
+	ErrNotFound     = errors.New("short URL not found")
+	ErrExpired      = errors.New("short URL has expired")
+	ErrInvalidCode  = errors.New("short code is invalid")
+	ErrUnsafeTarget = errors.New("stored short URL destination is invalid")
+	ErrCodeTaken    = errors.New("short code already exists")
 )
 
 // ShortURL is a persisted short-link mapping.
@@ -20,6 +23,22 @@ type ShortURL struct {
 	CreatedAt   time.Time
 	ExpiresAt   *time.Time
 	IsActive    bool
+}
+
+// CachedRedirect contains only the fields needed to resolve a public redirect.
+// It is versioned by the Redis key namespace and never contains user data.
+type CachedRedirect struct {
+	ID          string     `json:"id"`
+	OriginalURL string     `json:"original_url"`
+	ExpiresAt   *time.Time `json:"expires_at"`
+	IsActive    bool       `json:"is_active"`
+}
+
+// RedirectCache is the disposable cache boundary used by the redirect use case.
+type RedirectCache interface {
+	Get(ctx context.Context, code string) (*CachedRedirect, error)
+	Set(ctx context.Context, code string, value CachedRedirect, ttl time.Duration) error
+	Delete(ctx context.Context, code string) error
 }
 
 // Cursor identifies the last item in a stable keyset-paginated listing.

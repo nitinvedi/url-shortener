@@ -156,7 +156,7 @@ The initial schema is implemented in `internal/storage/postgres/migrations/00000
 
 The runner acquires a PostgreSQL advisory lock before checking or applying migrations. Each migration and its version/checksum record are committed in the same transaction. The MVP follows a forward-only migration policy; see [migration safety rules](../internal/storage/postgres/migrations/README.md).
 
-The PostgreSQL adapter uses `database/sql` with the `lib/pq` driver. The pool has bounded open/idle connections, connection lifetime and idle-time limits, and a startup ping timeout. PostgreSQL is required for readiness. Redis remains optional until the redirect-cache milestone.
+The PostgreSQL adapter uses `database/sql` with the `lib/pq` driver. The pool has bounded open/idle connections, connection lifetime and idle-time limits, and a startup ping timeout. PostgreSQL is required for readiness. Redis is connected as an optional cache; its availability is reported separately and never blocks service startup.
 
 Implemented repository contracts:
 - User repository: create, lookup by normalized email, lookup by UUID.
@@ -253,9 +253,10 @@ The redirect handler submits a small event to a bounded in-process queue. A work
 - Store expires_at with the cached value and verify it at read time.
 - Do not cache unknown, inactive, or expired codes in the MVP.
 - On deactivation, delete the cache key after committing the database update.
-- Cache read/write/delete errors are observable but must not turn a healthy PostgreSQL redirect into a 5xx response.
+- Cache read/write/delete errors are logged but must not turn a healthy PostgreSQL redirect into a 5xx response.
+- Redis commands use per-operation deadlines; the current client uses 250 ms by default.
 
-Redis can be unavailable without making URL creation or redirects impossible, provided PostgreSQL is healthy. Readiness should require PostgreSQL; Redis availability is a degraded-mode signal, not a hard readiness dependency.
+The implementation in `internal/cache/redis` uses `github.com/redis/go-redis/v9`. The redirect service falls back to PostgreSQL on cache read failures, skips negative caching, and deletes a mapping after the PostgreSQL deactivation commits. Redirect cache writes are best-effort. Redis can be unavailable without making URL creation or redirects impossible, provided PostgreSQL is healthy. Readiness requires PostgreSQL; Redis availability is a degraded-mode signal, not a hard readiness dependency.
 
 ## 11. Authentication and authorization
 

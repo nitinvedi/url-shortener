@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nitinvedi/url-shortener/internal/analytics"
 	"github.com/nitinvedi/url-shortener/internal/auth"
 )
 
@@ -24,13 +25,13 @@ type DependencyCheck struct {
 // NewHandler builds the HTTP handler. Dependency checks can be added as
 // PostgreSQL and Redis clients are introduced in later implementation steps.
 func NewHandler(logger *slog.Logger, checks ...DependencyCheck) http.Handler {
-	return newHandler(logger, nil, nil, nil, "", checks...)
+	return newHandler(logger, nil, nil, nil, "", nil, nil, checks...)
 }
 
 // NewHandlerWithAuth registers public authentication endpoints alongside health
 // routes. Protected business routes are added in later milestones.
 func NewHandlerWithAuth(logger *slog.Logger, authService *auth.Service, checks ...DependencyCheck) http.Handler {
-	return newHandler(logger, authService, nil, nil, "", checks...)
+	return newHandler(logger, authService, nil, nil, "", nil, nil, checks...)
 }
 
 // NewHandlerWithServices registers authentication and the protected URL
@@ -44,7 +45,22 @@ func NewHandlerWithServices(
 	publicBaseURL string,
 	checks ...DependencyCheck,
 ) http.Handler {
-	return newHandler(logger, authService, tokens, urlCreator, publicBaseURL, checks...)
+	return newHandler(logger, authService, tokens, urlCreator, publicBaseURL, nil, nil, checks...)
+}
+
+// NewHandlerWithRedirects adds the public 302 redirect route and an optional
+// non-blocking analytics recorder to the authenticated application routes.
+func NewHandlerWithRedirects(
+	logger *slog.Logger,
+	authService *auth.Service,
+	tokens auth.TokenValidator,
+	urlCreator URLCreator,
+	redirectResolver RedirectResolver,
+	clickRecorder analytics.ClickRecorder,
+	publicBaseURL string,
+	checks ...DependencyCheck,
+) http.Handler {
+	return newHandler(logger, authService, tokens, urlCreator, publicBaseURL, redirectResolver, clickRecorder, checks...)
 }
 
 func newHandler(
@@ -53,6 +69,8 @@ func newHandler(
 	tokens auth.TokenValidator,
 	urlCreator URLCreator,
 	publicBaseURL string,
+	redirectResolver RedirectResolver,
+	clickRecorder analytics.ClickRecorder,
 	checks ...DependencyCheck,
 ) http.Handler {
 	if logger == nil {
@@ -70,6 +88,13 @@ func newHandler(
 			logger:        logger,
 		}
 		mux.Handle("POST /api/v1/urls", auth.Middleware(tokens, http.HandlerFunc(urlHandler.create)))
+	}
+	if redirectResolver != nil {
+		mux.Handle("GET /{code}", &redirectHTTPHandler{
+			service:  redirectResolver,
+			recorder: clickRecorder,
+			logger:   logger,
+		})
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})

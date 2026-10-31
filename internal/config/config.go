@@ -32,6 +32,11 @@ type Config struct {
 	JWTSigningKey string
 	JWTIssuer     string
 	JWTAudience   string
+
+	RedisAddr             string
+	RedisPassword         string
+	RedisDB               int
+	RedisOperationTimeout time.Duration
 }
 
 // Load reads configuration from the process environment.
@@ -66,6 +71,11 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 		JWTSigningKey: valueOrDefault(getenv, "JWT_SIGNING_KEY", "local-development-only-signing-key-change-before-deploy"),
 		JWTIssuer:     valueOrDefault(getenv, "JWT_ISSUER", "url-shortener"),
 		JWTAudience:   valueOrDefault(getenv, "JWT_AUDIENCE", "url-shortener-api"),
+
+		RedisAddr:             valueOrDefault(getenv, "REDIS_ADDR", "localhost:6379"),
+		RedisPassword:         valueOrDefault(getenv, "REDIS_PASSWORD", ""),
+		RedisDB:               0,
+		RedisOperationTimeout: 250 * time.Millisecond,
 	}
 
 	if err := validateListenAddress(cfg.HTTPAddr); err != nil {
@@ -76,6 +86,9 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	}
 	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
 		return Config{}, fmt.Errorf("invalid DATABASE_URL: %w", err)
+	}
+	if err := validateRedisAddress(cfg.RedisAddr); err != nil {
+		return Config{}, fmt.Errorf("invalid REDIS_ADDR: %w", err)
 	}
 	if len(cfg.JWTSigningKey) < 32 {
 		return Config{}, fmt.Errorf("JWT_SIGNING_KEY must contain at least 32 bytes")
@@ -109,6 +122,9 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	if cfg.DBConnectTimeout, err = durationOrDefault(getenv, "DB_CONNECT_TIMEOUT", cfg.DBConnectTimeout); err != nil {
 		return Config{}, err
 	}
+	if cfg.RedisOperationTimeout, err = durationOrDefault(getenv, "REDIS_OPERATION_TIMEOUT", cfg.RedisOperationTimeout); err != nil {
+		return Config{}, err
+	}
 
 	if cfg.DBMaxOpenConns, err = intOrDefault(getenv, "DB_MAX_OPEN_CONNS", cfg.DBMaxOpenConns, 1); err != nil {
 		return Config{}, err
@@ -118,6 +134,9 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	}
 	if cfg.DBMaxIdleConns > cfg.DBMaxOpenConns {
 		return Config{}, fmt.Errorf("DB_MAX_IDLE_CONNS cannot exceed DB_MAX_OPEN_CONNS")
+	}
+	if cfg.RedisDB, err = intOrDefault(getenv, "REDIS_DB", cfg.RedisDB, 0); err != nil {
+		return Config{}, err
 	}
 
 	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {
@@ -203,6 +222,18 @@ func validatePublicBaseURL(raw string) error {
 		parsed.ForceQuery ||
 		parsed.Fragment != "" {
 		return fmt.Errorf("must be an HTTP or HTTPS origin without credentials, path, query, or fragment")
+	}
+	return nil
+}
+
+func validateRedisAddress(address string) error {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil || strings.TrimSpace(host) == "" || strings.TrimSpace(address) != address {
+		return fmt.Errorf("must use host:port format")
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return fmt.Errorf("port must be an integer between 1 and 65535")
 	}
 	return nil
 }

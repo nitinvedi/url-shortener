@@ -68,15 +68,15 @@ Use a consistent JSON error shape for API routes. Redirects are public; manageme
 
 ### Milestone 1 — Foundation
 - [x] Agree on system boundaries and API contract — [#1 Architecture and API contract](https://github.com/nitinvedi/url-shortener/issues/1)
-- [ ] Bootstrap server, configuration, logging, health checks, and Docker Compose — [#2 Service foundation](https://github.com/nitinvedi/url-shortener/issues/2)
-- [ ] Create PostgreSQL schema, migrations, and repository layer — [#3 Persistence](https://github.com/nitinvedi/url-shortener/issues/3)
+- [x] Bootstrap server, configuration, logging, health checks, and Docker Compose — [#2 Service foundation](https://github.com/nitinvedi/url-shortener/issues/2)
+- [x] Create PostgreSQL schema, migrations, and repository layer — [#3 Persistence](https://github.com/nitinvedi/url-shortener/issues/3)
 
 **Exit criteria:** the service starts locally, dependencies are reproducible, and database migrations run from an empty database.
 
 ### Milestone 2 — Identity and core shortening
-- [ ] Implement registration, login, token validation, and authentication middleware — [#6 Authentication and ownership](https://github.com/nitinvedi/url-shortener/issues/6). Build authentication before exposing owner-scoped URL creation.
-- [ ] Create URLs, validate destinations, and generate random Base62 codes — [#4 URL creation](https://github.com/nitinvedi/url-shortener/issues/4)
-- [ ] Resolve codes and redirect using Redis cache-aside — [#5 Redirect path](https://github.com/nitinvedi/url-shortener/issues/5)
+- [x] Implement registration, login, token validation, and authentication middleware (Phase A) — [#6 Authentication and ownership](https://github.com/nitinvedi/url-shortener/issues/6). Owner-scoped management remains for Milestone 3.
+- [x] Create URLs, validate destinations, and generate random Base62 codes — [#4 URL creation](https://github.com/nitinvedi/url-shortener/issues/4)
+- [x] Resolve codes and redirect using Redis cache-aside — [#5 Redirect path](https://github.com/nitinvedi/url-shortener/issues/5)
 
 **Exit criteria:** users can authenticate; an authenticated user can create a short URL; a public visitor can resolve it; unknown, expired, and inactive codes behave consistently; Redis failure does not take down redirects when PostgreSQL is healthy.
 
