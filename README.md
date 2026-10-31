@@ -94,8 +94,9 @@ make compose-down
 ## Current status
 
 - [x] Architecture and API design documented.
-- [x] Go HTTP foundation, environment configuration, health endpoints, local Compose services, and PostgreSQL migrations/repositories.
-- [ ] PostgreSQL schema, migrations, and repository layer.
+- [x] Go HTTP foundation, environment configuration, health endpoints, and local Compose services.
+- [x] PostgreSQL schema, forward-only migrations, connection pool, and repositories implemented.
+- [ ] Execute PostgreSQL integration tests in a Docker-enabled environment or CI.
 - [ ] Authentication and URL creation/redirect flows.
 - [ ] Analytics, hardening, CI, and deployment.
 
