@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nitinvedi/url-shortener/internal/auth"
 	"github.com/nitinvedi/url-shortener/internal/config"
 	"github.com/nitinvedi/url-shortener/internal/httpapi"
 	"github.com/nitinvedi/url-shortener/internal/storage/postgres"
@@ -54,7 +55,20 @@ func run() error {
 	}
 	logger.Info("database migrations are up to date")
 
-	handler := httpapi.NewHandler(logger, httpapi.DependencyCheck{
+	tokenManager, err := auth.NewTokenManager(cfg.JWTSigningKey, cfg.JWTIssuer, cfg.JWTAudience, auth.AccessTokenTTL)
+	if err != nil {
+		return fmt.Errorf("initialize access token manager: %w", err)
+	}
+	authService, err := auth.NewService(
+		postgres.NewUserRepository(db),
+		auth.NewArgon2idHasher(),
+		tokenManager,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize authentication service: %w", err)
+	}
+
+	handler := httpapi.NewHandlerWithAuth(logger, authService, httpapi.DependencyCheck{
 		Name:     "postgres",
 		Required: true,
 		Check:    db.PingContext,
