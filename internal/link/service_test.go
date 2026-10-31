@@ -148,15 +148,21 @@ func TestCreateCustomAliasCollisionIsNotRetried(t *testing.T) {
 	}
 }
 
+func TestCreateRejectsMissingOwner(t *testing.T) {
+	service := newServiceForTest(t, &serviceRepository{}, &sequenceGenerator{codes: []string{"Ab12Cd34Ef"}})
+	_, err := service.Create(context.Background(), CreateInput{OriginalURL: "https://example.com"})
+	if err == nil || err.Error() != "authenticated user ID is required" {
+		t.Fatalf("Create() error = %v, want authenticated user ID requirement", err)
+	}
+}
+
 func TestCreateValidation(t *testing.T) {
-	future := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
 	past := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
 		name      string
 		input     CreateInput
 		wantError string
 	}{
-		{"missing owner", CreateInput{OriginalURL: "https://example.com"}, "authenticated user ID is required"},
 		{"relative URL", CreateInput{UserID: "owner", OriginalURL: "/path"}, "invalid_url"},
 		{"unsupported scheme", CreateInput{UserID: "owner", OriginalURL: "ftp://example.com/file"}, "invalid_url"},
 		{"missing host", CreateInput{UserID: "owner", OriginalURL: "https:///path"}, "invalid_url"},
@@ -185,7 +191,6 @@ func TestCreateValidation(t *testing.T) {
 			}
 		})
 	}
-	_ = future
 }
 
 func TestGeneratedCodeUsesUnbiasedBase62Mapping(t *testing.T) {
