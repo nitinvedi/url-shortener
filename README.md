@@ -31,7 +31,7 @@ The project is being developed incrementally, starting with a reliable shortenin
 go run ./cmd/api
 ```
 
-The server listens on `:8080` by default. Check it with:
+The API requires PostgreSQL. Set `DATABASE_URL` to a PostgreSQL connection URL (a local default is configured for development), then start PostgreSQL before running the server. The server listens on `:8080` by default, applies embedded SQL migrations at startup, and checks PostgreSQL readiness. Check it with:
 
 ```bash
 curl -i http://localhost:8080/healthz
@@ -45,7 +45,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. At this foundation stage the API does not yet connect to either dependency; database and cache integration are tracked in later issues.
+The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. The API connects to PostgreSQL and applies migrations automatically at startup. Redis is started for the upcoming caching milestone but is not connected yet. PostgreSQL data is stored in the named `postgres_data` volume.
 
 Stop the stack with:
 
@@ -68,8 +68,14 @@ All settings are environment variables. Defaults are suitable for local developm
 | `HTTP_IDLE_TIMEOUT` | `60s` | Keep-alive idle timeout |
 | `HTTP_SHUTDOWN_TIMEOUT` | `10s` | Graceful shutdown deadline |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, or `error` |
+| `DATABASE_URL` | local PostgreSQL URL | PostgreSQL connection URL |
+| `DB_MAX_OPEN_CONNS` | `25` | Maximum open database connections |
+| `DB_MAX_IDLE_CONNS` | `5` | Maximum idle database connections |
+| `DB_CONN_MAX_LIFETIME` | `30m` | Maximum lifetime of a pooled connection |
+| `DB_CONN_MAX_IDLE_TIME` | `5m` | Maximum idle time for a pooled connection |
+| `DB_CONNECT_TIMEOUT` | `5s` | Startup database ping timeout |
 
-Invalid addresses, non-positive durations, and unknown log levels fail fast at startup.
+Invalid addresses, database URLs, pool sizes, non-positive durations, and unknown log levels fail fast at startup. Database migrations are forward-only and run automatically on startup; see [migration rules](./internal/storage/postgres/migrations/README.md).
 
 Copy `.env.example` to `.env` to configure local Compose ports and PostgreSQL credentials. `.env` is ignored by Git. Never commit real credentials.
 
@@ -88,7 +94,7 @@ make compose-down
 ## Current status
 
 - [x] Architecture and API design documented.
-- [x] Go HTTP foundation, environment configuration, health endpoints, and local Compose services.
+- [x] Go HTTP foundation, environment configuration, health endpoints, local Compose services, and PostgreSQL migrations/repositories.
 - [ ] PostgreSQL schema, migrations, and repository layer.
 - [ ] Authentication and URL creation/redirect flows.
 - [ ] Analytics, hardening, CI, and deployment.
