@@ -270,6 +270,19 @@ Redis can be unavailable without making URL creation or redirects impossible, pr
 - For a resource owned by someone else, return 404 rather than 403 to avoid confirming its existence.
 - Public redirects do not require authentication.
 
+### Authentication Phase A implementation
+
+The authentication application service is implemented in `internal/auth`. Public handlers expose only registration and login; no URL creation or management endpoint is mounted in this phase.
+
+- Registration normalizes email, validates password length, hashes with Argon2id, persists only the encoded hash, and returns a signed access token.
+- Login uses a generic invalid-credentials response for both unknown email and password mismatch.
+- Access tokens use HS256 only, with a 15-minute lifetime and required `iss`, `aud`, `sub`, `iat`, and `exp` claims. Validation checks the signature, fixed algorithm, issuer, audience, subject, issuance time, and expiry.
+- Token signing material is supplied through `JWT_SIGNING_KEY` (at least 32 bytes); `JWT_ISSUER` and `JWT_AUDIENCE` are deployment configuration. The checked-in key is for local development only.
+- `auth.Middleware` reads only the Bearer token, validates it, and places the signed subject in request context. Future protected handlers must read the user ID from this context and must not accept ownership from the request body.
+- Refresh tokens, password reset, email verification, and social login remain out of scope.
+
+The implementation is deliberately separated from URL creation: Phase A is complete before the public URL-creation endpoint is added in the next milestone.
+
 ## 12. HTTP behavior and errors
 
 API errors use one response shape:

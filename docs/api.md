@@ -27,7 +27,7 @@ Protected routes require:
 Authorization: Bearer <access_token>
 ~~~
 
-Access tokens expire after 15 minutes. Missing, malformed, expired, or invalid tokens return 401.
+Access tokens expire after 15 minutes. The implementation pins the signing algorithm to HS256 and verifies the signature plus issuer, audience, subject, issued-at, and expiry claims. The signing key is provided through `JWT_SIGNING_KEY` (at least 32 bytes); use a managed secret in deployed environments. Missing, malformed, expired, or invalid tokens return 401.
 
 ### Common error format
 
@@ -91,7 +91,7 @@ Rules:
 - Trim and lowercase email before storage.
 - Validate email syntax.
 - Password length: 8–128 bytes.
-- Store only an Argon2id password hash.
+- Store only an Argon2id password hash (64 MiB memory, 3 iterations, 4 lanes in the current implementation).
 - Duplicate normalized email returns 409.
 
 Response — 201 Created:

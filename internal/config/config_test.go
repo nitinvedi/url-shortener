@@ -39,6 +39,9 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 	if cfg.DBMaxOpenConns != 25 || cfg.DBMaxIdleConns != 5 {
 		t.Errorf("unexpected default pool sizes: max open %d, max idle %d", cfg.DBMaxOpenConns, cfg.DBMaxIdleConns)
 	}
+	if len(cfg.JWTSigningKey) < 32 || cfg.JWTIssuer != "url-shortener" || cfg.JWTAudience != "url-shortener-api" {
+		t.Errorf("unexpected JWT defaults")
+	}
 }
 
 func TestLoadFromParsesOverrides(t *testing.T) {
@@ -53,6 +56,9 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 		"DB_CONN_MAX_LIFETIME":  "1h",
 		"DB_CONN_MAX_IDLE_TIME": "2m",
 		"DB_CONNECT_TIMEOUT":    "8s",
+		"JWT_SIGNING_KEY":       "0123456789abcdef0123456789abcdef",
+		"JWT_ISSUER":            "shortener-service",
+		"JWT_AUDIENCE":          "shortener-clients",
 	}
 	cfg, err := LoadFrom(func(key string) string { return values[key] })
 	if err != nil {
@@ -80,6 +86,9 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	if cfg.DBConnMaxLifetime != time.Hour || cfg.DBConnMaxIdleTime != 2*time.Minute || cfg.DBConnectTimeout != 8*time.Second {
 		t.Errorf("unexpected database duration configuration")
 	}
+	if cfg.JWTSigningKey != values["JWT_SIGNING_KEY"] || cfg.JWTIssuer != values["JWT_ISSUER"] || cfg.JWTAudience != values["JWT_AUDIENCE"] {
+		t.Errorf("unexpected JWT configuration")
+	}
 }
 
 func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
@@ -99,6 +108,7 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "invalid max connections", values: map[string]string{"DB_MAX_OPEN_CONNS": "0"}},
 		{name: "idle exceeds open", values: map[string]string{"DB_MAX_OPEN_CONNS": "4", "DB_MAX_IDLE_CONNS": "5"}},
 		{name: "invalid connection lifetime", values: map[string]string{"DB_CONN_MAX_LIFETIME": "-1m"}},
+		{name: "short JWT signing key", values: map[string]string{"JWT_SIGNING_KEY": "short"}},
 	}
 
 	for _, tt := range tests {

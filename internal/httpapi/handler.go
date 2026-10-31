@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/nitinvedi/url-shortener/internal/auth"
 )
 
 const readinessTimeout = 2 * time.Second
@@ -22,11 +24,24 @@ type DependencyCheck struct {
 // NewHandler builds the HTTP handler. Dependency checks can be added as
 // PostgreSQL and Redis clients are introduced in later implementation steps.
 func NewHandler(logger *slog.Logger, checks ...DependencyCheck) http.Handler {
+	return newHandler(logger, nil, checks...)
+}
+
+// NewHandlerWithAuth registers public authentication endpoints alongside health
+// routes. Protected business routes are added in later milestones.
+func NewHandlerWithAuth(logger *slog.Logger, authService *auth.Service, checks ...DependencyCheck) http.Handler {
+	return newHandler(logger, authService, checks...)
+}
+
+func newHandler(logger *slog.Logger, authService *auth.Service, checks ...DependencyCheck) http.Handler {
 	if logger == nil {
 		logger = slog.Default()
 	}
 
 	mux := http.NewServeMux()
+	if authService != nil {
+		(&authHTTPHandler{service: authService, logger: logger}).registerRoutes(mux)
+	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
