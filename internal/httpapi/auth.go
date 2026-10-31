@@ -33,9 +33,9 @@ type authUserResponse struct {
 
 type authResponse struct {
 	User        authUserResponse `json:"user"`
-	AccessToken string            `json:"access_token"`
-	TokenType   string            `json:"token_type"`
-	ExpiresIn   int64             `json:"expires_in"`
+	AccessToken string           `json:"access_token"`
+	TokenType   string           `json:"token_type"`
+	ExpiresIn   int64            `json:"expires_in"`
 }
 
 func (h *authHTTPHandler) registerRoutes(mux *http.ServeMux) {
@@ -44,6 +44,8 @@ func (h *authHTTPHandler) registerRoutes(mux *http.ServeMux) {
 }
 
 func (h *authHTTPHandler) register(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
 	var request registerRequest
 	if err := decodeAuthJSON(w, r, &request); err != nil {
 		WriteError(w, r, http.StatusBadRequest, "invalid_json", "request body must contain valid JSON with email and password")
@@ -78,6 +80,8 @@ func (h *authHTTPHandler) register(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *authHTTPHandler) login(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
 	var request registerRequest
 	if err := decodeAuthJSON(w, r, &request); err != nil {
 		WriteError(w, r, http.StatusBadRequest, "invalid_json", "request body must contain valid JSON with email and password")
