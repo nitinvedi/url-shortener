@@ -16,8 +16,8 @@ const (
 
 var (
 	ErrInvalidCode        = errors.New("invalid short code")
-	ErrExpired             = errors.New("short URL has expired")
-	ErrInvalidDestination  = errors.New("stored URL destination is invalid")
+	ErrExpired            = errors.New("short URL has expired")
+	ErrInvalidDestination = errors.New("stored URL destination is invalid")
 )
 
 // CachedURL is the non-authoritative redirect representation stored in Redis.

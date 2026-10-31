@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/nitinvedi/url-shortener/internal/link"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // Store implements link.RedirectCache using Redis strings with JSON payloads.
