@@ -27,6 +27,10 @@ type Config struct {
 	DBConnMaxLifetime time.Duration
 	DBConnMaxIdleTime time.Duration
 	DBConnectTimeout  time.Duration
+
+	JWTSigningKey string
+	JWTIssuer     string
+	JWTAudience   string
 }
 
 // Load reads configuration from the process environment.
@@ -56,6 +60,10 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 		DBConnMaxLifetime: 30 * time.Minute,
 		DBConnMaxIdleTime: 5 * time.Minute,
 		DBConnectTimeout:  5 * time.Second,
+
+		JWTSigningKey: valueOrDefault(getenv, "JWT_SIGNING_KEY", "local-development-only-signing-key-change-before-deploy"),
+		JWTIssuer:     valueOrDefault(getenv, "JWT_ISSUER", "url-shortener"),
+		JWTAudience:   valueOrDefault(getenv, "JWT_AUDIENCE", "url-shortener-api"),
 	}
 
 	if err := validateListenAddress(cfg.HTTPAddr); err != nil {
@@ -63,6 +71,12 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	}
 	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
 		return Config{}, fmt.Errorf("invalid DATABASE_URL: %w", err)
+	}
+	if len(cfg.JWTSigningKey) < 32 {
+		return Config{}, fmt.Errorf("JWT_SIGNING_KEY must contain at least 32 bytes")
+	}
+	if cfg.JWTIssuer == "" || cfg.JWTAudience == "" {
+		return Config{}, fmt.Errorf("JWT_ISSUER and JWT_AUDIENCE are required")
 	}
 
 	var err error
