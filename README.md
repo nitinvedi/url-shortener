@@ -18,7 +18,7 @@ See **[ROADMAP.md](./ROADMAP.md)** for the architecture, API sketch, delivery mi
 
 ## Current status
 
-Planning and repository setup. Implementation begins with the architecture/API contract, then the Go service foundation and database layer.
+Architecture and API design are documented in [docs/architecture.md](./docs/architecture.md) and [docs/api.md](./docs/api.md). The next implementation steps are the Go service foundation and PostgreSQL layer, followed by authentication before owner-scoped URL creation.
 
 ## Development approach
 
