@@ -13,14 +13,14 @@ import (
 
 // Config contains validated process-level application settings.
 type Config struct {
-	HTTPAddr           string
-	PublicBaseURL      string
-	ReadHeaderTimeout  time.Duration
-	ReadTimeout        time.Duration
-	WriteTimeout       time.Duration
-	IdleTimeout        time.Duration
-	ShutdownTimeout    time.Duration
-	LogLevel           slog.Level
+	HTTPAddr          string
+	PublicBaseURL     string
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	ShutdownTimeout   time.Duration
+	LogLevel          slog.Level
 
 	DatabaseURL       string
 	DBMaxOpenConns    int
