@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -190,5 +189,5 @@ func randomTestSuffix(t *testing.T) string {
 	if _, err := rand.Read(value[:]); err != nil {
 		t.Fatalf("generate test suffix: %v", err)
 	}
-	return fmt.Sprintf("%x", hex.EncodeToString(value[:]))
+	return hex.EncodeToString(value[:])
 }
