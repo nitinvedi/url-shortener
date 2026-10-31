@@ -3,18 +3,18 @@ package link
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"io"
+	"log/slog"
 	"strings"
 	"testing"
 	"time"
 )
 
 type redirectTestRepository struct {
-	item       *ShortURL
-	getErr     error
-	getCalls   int
-	deactivate error
+	item            *ShortURL
+	getErr          error
+	getCalls        int
+	deactivate      error
 	deactivateCalls int
 }
 
