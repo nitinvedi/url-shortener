@@ -87,7 +87,8 @@ func TestLinkServiceCreatePostgresIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create custom alias URL: %v", err)
 	}
-	if custom.ShortCode != alias || custom.ExpiresAt == nil || !custom.ExpiresAt.Equal(expiry) {
+	if custom.ShortCode != alias || custom.ExpiresAt == nil ||
+		custom.ExpiresAt.UTC().UnixMicro() != expiry.UTC().UnixMicro() {
 		t.Fatalf("custom URL has unexpected persisted fields: %+v", custom)
 	}
 

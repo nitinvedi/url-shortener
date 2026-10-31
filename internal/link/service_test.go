@@ -176,8 +176,9 @@ func TestCreateValidation(t *testing.T) {
 			repository := &serviceRepository{}
 			service := newServiceForTest(t, repository, &sequenceGenerator{codes: []string{"Ab12Cd34Ef"}})
 			_, err := service.Create(context.Background(), test.input)
-			if err == nil || !strings.Contains(err.Error(), test.wantError) {
-				t.Fatalf("Create() error = %v, want error containing %q", err, test.wantError)
+			var validationErr *ValidationError
+			if !errors.As(err, &validationErr) || validationErr.Code != test.wantError {
+				t.Fatalf("Create() error = %v, want validation code %q", err, test.wantError)
 			}
 			if repository.calls != 0 {
 				t.Fatalf("invalid request reached repository %d times", repository.calls)
