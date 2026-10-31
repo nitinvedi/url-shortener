@@ -16,7 +16,7 @@ The project is being developed incrementally, starting with a reliable shortenin
 - **PostgreSQL** — durable source of truth
 - **Redis** — redirect cache and rate-limit state
 - **Docker Compose** — local dependencies
-- **GitHub Actions** — planned continuous integration
+- **GitHub Actions** — formatting, PostgreSQL integration tests, race checks, static analysis, and build
 
 ## Local development
 
@@ -85,6 +85,7 @@ Copy `.env.example` to `.env` to configure local Compose ports and PostgreSQL cr
 make run
 make test
 make test-race
+make test-integration TEST_DATABASE_URL="postgres://postgres:postgres@localhost:5432/shortener_test?sslmode=disable"
 make vet
 make build
 make compose-up
@@ -96,7 +97,7 @@ make compose-down
 - [x] Architecture and API design documented.
 - [x] Go HTTP foundation, environment configuration, health endpoints, and local Compose services.
 - [x] PostgreSQL schema, forward-only migrations, connection pool, and repositories implemented.
-- [ ] Execute PostgreSQL integration tests in a Docker-enabled environment or CI.
+- [x] PostgreSQL integration tests verified in GitHub Actions against PostgreSQL 16.
 - [ ] Authentication and URL creation/redirect flows.
 - [ ] Analytics, hardening, CI, and deployment.
 
