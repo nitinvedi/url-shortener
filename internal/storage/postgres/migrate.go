@@ -132,7 +132,7 @@ func loadMigrations() ([]migration, error) {
 			return nil, fmt.Errorf("read migration %q: %w", filename, err)
 		}
 		sum := sha256.Sum256(content)
-		name := strings.TrimSuffix(strings.TrimSuffix(base, ".up.sql"), parts[0]+"_")
+		name := strings.TrimSuffix(parts[1], ".up.sql")
 		migrations = append(migrations, migration{
 			version: version,
 			name: name,
