@@ -134,10 +134,10 @@ func loadMigrations() ([]migration, error) {
 		sum := sha256.Sum256(content)
 		name := strings.TrimSuffix(parts[1], ".up.sql")
 		migrations = append(migrations, migration{
-			version: version,
-			name: name,
+			version:  version,
+			name:     name,
 			checksum: fmt.Sprintf("%x", sum),
-			sql: string(content),
+			sql:      string(content),
 		})
 	}
 
