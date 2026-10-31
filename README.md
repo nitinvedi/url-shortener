@@ -31,7 +31,7 @@ The project is being developed incrementally, starting with a reliable shortenin
 go run ./cmd/api
 ```
 
-The API requires PostgreSQL. Set `DATABASE_URL` to a PostgreSQL connection URL (a local default is configured for development), then start PostgreSQL before running the server. The server listens on `:8080` by default, applies embedded SQL migrations at startup, and checks PostgreSQL readiness. Check it with:
+The API requires PostgreSQL. Set `DATABASE_URL` to a PostgreSQL connection URL (a local default is configured for development), then start PostgreSQL before running the server. It also requires `JWT_SIGNING_KEY` to be at least 32 bytes; the checked-in `.env.example` contains a local-only development key. The server listens on `:8080` by default, applies embedded SQL migrations at startup, and checks PostgreSQL readiness. Check it with:
 
 ```bash
 curl -i http://localhost:8080/healthz
@@ -45,7 +45,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. The API connects to PostgreSQL and applies migrations automatically at startup. Redis is started for the upcoming caching milestone but is not connected yet. PostgreSQL data is stored in the named `postgres_data` volume.
+The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. The API connects to PostgreSQL and applies migrations automatically at startup. Redis is started for the upcoming caching milestone but is not connected yet. PostgreSQL data is stored in the named `postgres_data` volume. Register with `POST /api/v1/auth/register`, then log in with `POST /api/v1/auth/login`; both return a 15-minute Bearer access token.
 
 Stop the stack with:
 
@@ -74,8 +74,11 @@ All settings are environment variables. Defaults are suitable for local developm
 | `DB_CONN_MAX_LIFETIME` | `30m` | Maximum lifetime of a pooled connection |
 | `DB_CONN_MAX_IDLE_TIME` | `5m` | Maximum idle time for a pooled connection |
 | `DB_CONNECT_TIMEOUT` | `5s` | Startup database ping timeout |
+| `JWT_SIGNING_KEY` | local-only development key | HS256 signing key, minimum 32 bytes; use a secret manager in production |
+| `JWT_ISSUER` | `url-shortener` | Required token issuer claim |
+| `JWT_AUDIENCE` | `url-shortener-api` | Required token audience claim |
 
-Invalid addresses, database URLs, pool sizes, non-positive durations, and unknown log levels fail fast at startup. Database migrations are forward-only and run automatically on startup; see [migration rules](./internal/storage/postgres/migrations/README.md).
+Invalid addresses, database URLs, pool sizes, non-positive durations, short JWT signing keys, and unknown log levels fail fast at startup. The local JWT key must be replaced with a unique secret in every deployed environment. Database migrations are forward-only and run automatically on startup; see [migration rules](./internal/storage/postgres/migrations/README.md).
 
 Copy `.env.example` to `.env` to configure local Compose ports and PostgreSQL credentials. `.env` is ignored by Git. Never commit real credentials.
 
@@ -98,7 +101,8 @@ make compose-down
 - [x] Go HTTP foundation, environment configuration, health endpoints, and local Compose services.
 - [x] PostgreSQL schema, forward-only migrations, connection pool, and repositories implemented.
 - [x] PostgreSQL integration tests verified in GitHub Actions against PostgreSQL 16.
-- [ ] Authentication and URL creation/redirect flows.
+- [x] Authentication Phase A: registration, login, Argon2id password hashing, signed 15-minute access tokens, and verified-token middleware.
+- [ ] URL creation and public redirect flows; see [issue #4](https://github.com/nitinvedi/url-shortener/issues/4).
 - [ ] Analytics, hardening, CI, and deployment.
 
 See [ROADMAP.md](./ROADMAP.md) for the full sequence.
