@@ -20,6 +20,10 @@ type redirectHTTPHandler struct {
 	logger   *slog.Logger
 }
 
+func (h *redirectHTTPHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.redirect(w, r)
+}
+
 func (h *redirectHTTPHandler) redirect(w http.ResponseWriter, r *http.Request) {
 	code := r.PathValue("code")
 	shortURL, err := h.service.Resolve(r.Context(), code)
