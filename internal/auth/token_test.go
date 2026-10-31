@@ -85,7 +85,7 @@ func TestTokenManagerRejectsAlgorithmSubstitutionAndTampering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tampered := token[:len(token)-1] + "A"
+	tampered := token + "x"
 	if _, err := manager.Validate(tampered); err != ErrInvalidToken {
 		t.Fatalf("tampered token error = %v, want ErrInvalidToken", err)
 	}
