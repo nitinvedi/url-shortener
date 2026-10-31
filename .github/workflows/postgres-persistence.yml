@@ -45,6 +45,7 @@ jobs:
 
       - name: Check formatting
         run: |
+          gofmt -d $(git ls-files '*.go')
           files="$(gofmt -l $(git ls-files '*.go'))"
           if [ -n "$files" ]; then
             echo "Go files need formatting:"
