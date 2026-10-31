@@ -33,6 +33,12 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 	if cfg.LogLevel != slog.LevelInfo {
 		t.Errorf("LogLevel = %v, want info", cfg.LogLevel)
 	}
+	if cfg.DatabaseURL != "postgres://shortener:local_dev_password@localhost:5432/shortener?sslmode=disable" {
+		t.Errorf("unexpected default DatabaseURL: %q", cfg.DatabaseURL)
+	}
+	if cfg.DBMaxOpenConns != 25 || cfg.DBMaxIdleConns != 5 {
+		t.Errorf("unexpected default pool sizes: max open %d, max idle %d", cfg.DBMaxOpenConns, cfg.DBMaxIdleConns)
+	}
 }
 
 func TestLoadFromParsesOverrides(t *testing.T) {
@@ -41,6 +47,12 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 		"HTTP_READ_TIMEOUT":     "20s",
 		"HTTP_SHUTDOWN_TIMEOUT": "3s",
 		"LOG_LEVEL":             "DEBUG",
+		"DATABASE_URL":          "postgresql://app:secret@db.internal:5432/shortener?sslmode=require",
+		"DB_MAX_OPEN_CONNS":     "40",
+		"DB_MAX_IDLE_CONNS":     "10",
+		"DB_CONN_MAX_LIFETIME":  "1h",
+		"DB_CONN_MAX_IDLE_TIME": "2m",
+		"DB_CONNECT_TIMEOUT":    "8s",
 	}
 	cfg, err := LoadFrom(func(key string) string { return values[key] })
 	if err != nil {
@@ -59,6 +71,15 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	if cfg.LogLevel != slog.LevelDebug {
 		t.Errorf("LogLevel = %v, want debug", cfg.LogLevel)
 	}
+	if cfg.DatabaseURL != values["DATABASE_URL"] {
+		t.Errorf("DatabaseURL = %q", cfg.DatabaseURL)
+	}
+	if cfg.DBMaxOpenConns != 40 || cfg.DBMaxIdleConns != 10 {
+		t.Errorf("unexpected pool sizes: max open %d, max idle %d", cfg.DBMaxOpenConns, cfg.DBMaxIdleConns)
+	}
+	if cfg.DBConnMaxLifetime != time.Hour || cfg.DBConnMaxIdleTime != 2*time.Minute || cfg.DBConnectTimeout != 8*time.Second {
+		t.Errorf("unexpected database duration configuration")
+	}
 }
 
 func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
@@ -72,6 +93,12 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "zero duration", values: map[string]string{"HTTP_IDLE_TIMEOUT": "0s"}},
 		{name: "negative duration", values: map[string]string{"HTTP_WRITE_TIMEOUT": "-1s"}},
 		{name: "invalid log level", values: map[string]string{"LOG_LEVEL": "verbose"}},
+		{name: "wrong database scheme", values: map[string]string{"DATABASE_URL": "mysql://app:secret@localhost:3306/shortener"}},
+		{name: "database name missing", values: map[string]string{"DATABASE_URL": "postgres://app:secret@localhost:5432"}},
+		{name: "database username missing", values: map[string]string{"DATABASE_URL": "postgres://localhost:5432/shortener"}},
+		{name: "invalid max connections", values: map[string]string{"DB_MAX_OPEN_CONNS": "0"}},
+		{name: "idle exceeds open", values: map[string]string{"DB_MAX_OPEN_CONNS": "4", "DB_MAX_IDLE_CONNS": "5"}},
+		{name: "invalid connection lifetime", values: map[string]string{"DB_CONN_MAX_LIFETIME": "-1m"}},
 	}
 
 	for _, tt := range tests {

@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
-// Config contains the process-level settings needed to start the HTTP server.
+// Config contains validated process-level application settings.
 type Config struct {
 	HTTPAddr          string
 	ReadHeaderTimeout time.Duration
@@ -19,6 +20,13 @@ type Config struct {
 	IdleTimeout       time.Duration
 	ShutdownTimeout   time.Duration
 	LogLevel          slog.Level
+
+	DatabaseURL       string
+	DBMaxOpenConns    int
+	DBMaxIdleConns    int
+	DBConnMaxLifetime time.Duration
+	DBConnMaxIdleTime time.Duration
+	DBConnectTimeout  time.Duration
 }
 
 // Load reads configuration from the process environment.
@@ -41,10 +49,20 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 		IdleTimeout:       60 * time.Second,
 		ShutdownTimeout:   10 * time.Second,
 		LogLevel:          slog.LevelInfo,
+
+		DatabaseURL:       valueOrDefault(getenv, "DATABASE_URL", "postgres://shortener:local_dev_password@localhost:5432/shortener?sslmode=disable"),
+		DBMaxOpenConns:    25,
+		DBMaxIdleConns:    5,
+		DBConnMaxLifetime: 30 * time.Minute,
+		DBConnMaxIdleTime: 5 * time.Minute,
+		DBConnectTimeout:  5 * time.Second,
 	}
 
 	if err := validateListenAddress(cfg.HTTPAddr); err != nil {
 		return Config{}, fmt.Errorf("invalid HTTP_ADDR: %w", err)
+	}
+	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
+		return Config{}, fmt.Errorf("invalid DATABASE_URL: %w", err)
 	}
 
 	var err error
@@ -62,6 +80,25 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	}
 	if cfg.ShutdownTimeout, err = durationOrDefault(getenv, "HTTP_SHUTDOWN_TIMEOUT", cfg.ShutdownTimeout); err != nil {
 		return Config{}, err
+	}
+	if cfg.DBConnMaxLifetime, err = durationOrDefault(getenv, "DB_CONN_MAX_LIFETIME", cfg.DBConnMaxLifetime); err != nil {
+		return Config{}, err
+	}
+	if cfg.DBConnMaxIdleTime, err = durationOrDefault(getenv, "DB_CONN_MAX_IDLE_TIME", cfg.DBConnMaxIdleTime); err != nil {
+		return Config{}, err
+	}
+	if cfg.DBConnectTimeout, err = durationOrDefault(getenv, "DB_CONNECT_TIMEOUT", cfg.DBConnectTimeout); err != nil {
+		return Config{}, err
+	}
+
+	if cfg.DBMaxOpenConns, err = intOrDefault(getenv, "DB_MAX_OPEN_CONNS", cfg.DBMaxOpenConns, 1); err != nil {
+		return Config{}, err
+	}
+	if cfg.DBMaxIdleConns, err = intOrDefault(getenv, "DB_MAX_IDLE_CONNS", cfg.DBMaxIdleConns, 0); err != nil {
+		return Config{}, err
+	}
+	if cfg.DBMaxIdleConns > cfg.DBMaxOpenConns {
+		return Config{}, fmt.Errorf("DB_MAX_IDLE_CONNS cannot exceed DB_MAX_OPEN_CONNS")
 	}
 
 	if raw := strings.TrimSpace(getenv("LOG_LEVEL")); raw != "" {
@@ -105,6 +142,18 @@ func durationOrDefault(getenv func(string) string, key string, fallback time.Dur
 	return value, nil
 }
 
+func intOrDefault(getenv func(string) string, key string, fallback, minimum int) (int, error) {
+	raw := strings.TrimSpace(getenv(key))
+	if raw == "" {
+		return fallback, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < minimum {
+		return 0, fmt.Errorf("invalid %s %q: expected an integer greater than or equal to %d", key, raw, minimum)
+	}
+	return value, nil
+}
+
 func validateListenAddress(address string) error {
 	_, port, err := net.SplitHostPort(address)
 	if err != nil {
@@ -114,6 +163,23 @@ func validateListenAddress(address string) error {
 	portNumber, err := strconv.Atoi(port)
 	if err != nil || portNumber < 1 || portNumber > 65535 {
 		return fmt.Errorf("port must be an integer between 1 and 65535")
+	}
+	return nil
+}
+
+func validateDatabaseURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return err
+	}
+	if parsed.Scheme != "postgres" && parsed.Scheme != "postgresql" {
+		return fmt.Errorf("scheme must be postgres or postgresql")
+	}
+	if parsed.Hostname() == "" || strings.Trim(parsed.Path, "/") == "" {
+		return fmt.Errorf("host and database name are required")
+	}
+	if parsed.User == nil || strings.TrimSpace(parsed.User.Username()) == "" {
+		return fmt.Errorf("database username is required")
 	}
 	return nil
 }

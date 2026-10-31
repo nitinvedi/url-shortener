@@ -9,9 +9,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/nitinvedi/url-shortener/internal/config"
 	"github.com/nitinvedi/url-shortener/internal/httpapi"
+	"github.com/nitinvedi/url-shortener/internal/storage/postgres"
 )
 
 func main() {
@@ -32,9 +34,35 @@ func run() error {
 	}))
 	slog.SetDefault(logger)
 
+	startupCtx, startupCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer startupCancel()
+
+	db, err := postgres.Open(startupCtx, cfg.DatabaseURL, postgres.PoolConfig{
+		MaxOpenConns:    cfg.DBMaxOpenConns,
+		MaxIdleConns:    cfg.DBMaxIdleConns,
+		ConnMaxLifetime: cfg.DBConnMaxLifetime,
+		ConnMaxIdleTime: cfg.DBConnMaxIdleTime,
+		ConnectTimeout:  cfg.DBConnectTimeout,
+	})
+	if err != nil {
+		return fmt.Errorf("initialize PostgreSQL: %w", err)
+	}
+	defer db.Close()
+
+	if err := postgres.Migrate(startupCtx, db); err != nil {
+		return fmt.Errorf("run database migrations: %w", err)
+	}
+	logger.Info("database migrations are up to date")
+
+	handler := httpapi.NewHandler(logger, httpapi.DependencyCheck{
+		Name:     "postgres",
+		Required: true,
+		Check:    db.PingContext,
+	})
+
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           httpapi.NewHandler(logger),
+		Handler:           handler,
 		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,

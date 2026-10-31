@@ -150,6 +150,20 @@ Required indexes: unique index on short_code and a user_id + created_at index fo
 
 The analytics milestone will add a daily aggregate table keyed by (url_id, date_utc). It should store counts only; do not collect raw IP addresses or full user-agent strings in the MVP.
 
+## 5.1 PostgreSQL implementation and migration policy
+
+The initial schema is implemented in `internal/storage/postgres/migrations/000001_initial_schema.up.sql`. The Go binary embeds versioned SQL files and applies unapplied migrations during startup. A SHA-256 checksum is stored for each applied version; changing an applied migration causes startup to fail with an instruction to add a new migration instead.
+
+The runner acquires a PostgreSQL advisory lock before checking or applying migrations. Each migration and its version/checksum record are committed in the same transaction. The MVP follows a forward-only migration policy; see [migration safety rules](../internal/storage/postgres/migrations/README.md).
+
+The PostgreSQL adapter uses `database/sql` with the `lib/pq` driver. The pool has bounded open/idle connections, connection lifetime and idle-time limits, and a startup ping timeout. PostgreSQL is required for readiness. Redis remains optional until the redirect-cache milestone.
+
+Implemented repository contracts:
+- User repository: create, lookup by normalized email, lookup by UUID.
+- URL repository: create, lookup by public short code, owner-scoped keyset listing, owner-scoped idempotent deactivation.
+
+The initial migration enforces case-insensitive unique email, unique short codes, user-to-URL foreign keys, URL length/expiry checks, and indexes for short-code lookup, owner listings, and active expirations.
+
 ## 6. Short-code generation
 
 - Generate 10 characters from the alphabet A–Z, a–z, and 0–9 using crypto/rand.
