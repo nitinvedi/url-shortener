@@ -76,4 +76,3 @@ func TestRegistrationAndLoginWithPostgres(t *testing.T) {
 		t.Fatalf("corrupted hash error = %v, want ErrInvalidCredentials", err)
 	}
 }
-
