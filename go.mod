@@ -1,6 +1,8 @@
 module github.com/nitinvedi/url-shortener
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.12
 
 require (
 	github.com/lib/pq v1.12.3
