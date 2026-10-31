@@ -12,10 +12,11 @@ import (
 const readinessTimeout = 2 * time.Second
 
 // DependencyCheck describes a required or optional runtime dependency. A
-// failing check marks readiness as degraded; liveness remains independent.
+// failing required check marks readiness as degraded; liveness is independent.
 type DependencyCheck struct {
-	Name  string
-	Check func(context.Context) error
+	Name     string
+	Required bool
+	Check    func(context.Context) error
 }
 
 // NewHandler builds the HTTP handler. Dependency checks can be added as
@@ -38,13 +39,17 @@ func NewHandler(logger *slog.Logger, checks ...DependencyCheck) http.Handler {
 		for _, dependency := range checks {
 			if dependency.Name == "" || dependency.Check == nil {
 				dependencies[dependency.Name] = "degraded"
-				ready = false
+				if dependency.Required {
+					ready = false
+				}
 				continue
 			}
 
 			if err := dependency.Check(checkCtx); err != nil {
 				dependencies[dependency.Name] = "degraded"
-				ready = false
+				if dependency.Required {
+					ready = false
+				}
 				logger.WarnContext(r.Context(), "readiness dependency check failed",
 					"dependency", dependency.Name,
 					"error", err,
