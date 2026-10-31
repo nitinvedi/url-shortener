@@ -12,7 +12,6 @@ var (
 	ErrInvalidCode    = errors.New("short code is invalid")
 	ErrUnsafeTarget   = errors.New("stored short URL destination is invalid")
 	ErrCodeTaken      = errors.New("short code already exists")
-	ErrCodeGeneration = errors.New("could not allocate a unique short code")
 )
 
 // ShortURL is a persisted short-link mapping.
