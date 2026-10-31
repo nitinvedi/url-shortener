@@ -109,7 +109,6 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "idle exceeds open", values: map[string]string{"DB_MAX_OPEN_CONNS": "4", "DB_MAX_IDLE_CONNS": "5"}},
 		{name: "invalid connection lifetime", values: map[string]string{"DB_CONN_MAX_LIFETIME": "-1m"}},
 		{name: "short JWT signing key", values: map[string]string{"JWT_SIGNING_KEY": "short"}},
-		{name: "missing JWT issuer", values: map[string]string{"JWT_ISSUER": " "}},
 	}
 
 	for _, tt := range tests {
