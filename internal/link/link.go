@@ -7,11 +7,11 @@ import (
 )
 
 var (
-	ErrNotFound       = errors.New("short URL not found")
-	ErrExpired        = errors.New("short URL has expired")
-	ErrInvalidCode    = errors.New("short code is invalid")
-	ErrUnsafeTarget   = errors.New("stored short URL destination is invalid")
-	ErrCodeTaken      = errors.New("short code already exists")
+	ErrNotFound     = errors.New("short URL not found")
+	ErrExpired      = errors.New("short URL has expired")
+	ErrInvalidCode  = errors.New("short code is invalid")
+	ErrUnsafeTarget = errors.New("stored short URL destination is invalid")
+	ErrCodeTaken    = errors.New("short code already exists")
 )
 
 // ShortURL is a persisted short-link mapping.
