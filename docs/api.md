@@ -311,7 +311,10 @@ Behavior:
 - Unknown code: 404 Not Found.
 - Inactive code: 404 Not Found.
 - Expired code: 410 Gone.
-- Redis unavailable: fall back to PostgreSQL.
+- Redis unavailable or a cache read fails: fall back to PostgreSQL.
+- Redis stores only active mappings under `short-url:v1:{code}`; missing, inactive, and expired codes are not cached.
+- Cache entries have a maximum TTL of five minutes. When a URL expires sooner, the TTL is shorter than its remaining lifetime, and the absolute expiry is checked again on every cache hit.
+- Redis cache write failures do not fail an otherwise valid redirect. After a durable deactivation, the corresponding cache entry is deleted best-effort.
 - Do not use 301; the MVP uses 302 so link targets remain changeable and browser caches do not make the redirect permanent.
 - The service returns a redirect; it does not fetch or proxy the destination.
 

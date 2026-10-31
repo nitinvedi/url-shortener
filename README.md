@@ -45,7 +45,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. The API connects to PostgreSQL and applies migrations automatically at startup. Redis is started for the upcoming caching milestone but is not connected yet. PostgreSQL data is stored in the named `postgres_data` volume. Register with `POST /api/v1/auth/register`, then log in with `POST /api/v1/auth/login`; both return a 15-minute Bearer access token.
+The API is available at `http://localhost:8080`. PostgreSQL and Redis are exposed on ports 5432 and 6379 by default. The API connects to PostgreSQL and applies migrations automatically at startup. Redis is connected as an optional redirect cache; when it is unavailable, redirects fall back to PostgreSQL and readiness reports Redis as degraded. PostgreSQL data is stored in the named `postgres_data` volume. Register with `POST /api/v1/auth/register`, then log in with `POST /api/v1/auth/login`; both return a 15-minute Bearer access token.
 
 Stop the stack with:
 
@@ -74,6 +74,10 @@ All settings are environment variables. Defaults are suitable for local developm
 | `DB_CONN_MAX_LIFETIME` | `30m` | Maximum lifetime of a pooled connection |
 | `DB_CONN_MAX_IDLE_TIME` | `5m` | Maximum idle time for a pooled connection |
 | `DB_CONNECT_TIMEOUT` | `5s` | Startup database ping timeout |
+| `REDIS_ADDR` | `localhost:6379` | Redis address; Compose overrides this to `redis:6379` |
+| `REDIS_PASSWORD` | empty | Optional Redis password |
+| `REDIS_DB` | `0` | Redis logical database |
+| `REDIS_OPERATION_TIMEOUT` | `250ms` | Per-operation Redis deadline |
 | `JWT_SIGNING_KEY` | local-only development key | HS256 signing key, minimum 32 bytes; use a secret manager in production |
 | `JWT_ISSUER` | `url-shortener` | Required token issuer claim |
 | `JWT_AUDIENCE` | `url-shortener-api` | Required token audience claim |
@@ -102,7 +106,8 @@ make compose-down
 - [x] PostgreSQL schema, forward-only migrations, connection pool, and repositories implemented.
 - [x] PostgreSQL integration tests verified in GitHub Actions against PostgreSQL 16.
 - [x] Authentication Phase A: registration, login, Argon2id password hashing, signed 15-minute access tokens, and verified-token middleware.
-- [ ] URL creation and public redirect flows; see [issue #4](https://github.com/nitinvedi/url-shortener/issues/4).
+- [x] Authenticated URL creation and public Redis-backed redirects ([#4](https://github.com/nitinvedi/url-shortener/issues/4), [#5](https://github.com/nitinvedi/url-shortener/issues/5)).
+- [ ] Owner-scoped URL listing, metadata, deactivation endpoints, and analytics.
 - [ ] Analytics, hardening, CI, and deployment.
 
 See [ROADMAP.md](./ROADMAP.md) for the full sequence.
