@@ -52,6 +52,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify module files are tidy
+        run: go mod tidy -diff
+
       - name: Run unit and PostgreSQL integration tests
         run: go test ./...
 
