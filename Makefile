@@ -10,7 +10,7 @@ test-race:
 	go test -race ./...
 
 test-integration:
-	TEST_DATABASE_URL="${TEST_DATABASE_URL}" go test ./... -count=1
+	TEST_DATABASE_URL="${TEST_DATABASE_URL}" TEST_REDIS_URL="${TEST_REDIS_URL}" go test ./... -count=1
 
 fmt:
 	gofmt -w $$(find . -name '*.go' -not -path './vendor/*')

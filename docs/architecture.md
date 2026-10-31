@@ -156,11 +156,12 @@ The initial schema is implemented in `internal/storage/postgres/migrations/00000
 
 The runner acquires a PostgreSQL advisory lock before checking or applying migrations. Each migration and its version/checksum record are committed in the same transaction. The MVP follows a forward-only migration policy; see [migration safety rules](../internal/storage/postgres/migrations/README.md).
 
-The PostgreSQL adapter uses `database/sql` with the `lib/pq` driver. The pool has bounded open/idle connections, connection lifetime and idle-time limits, and a startup ping timeout. PostgreSQL is required for readiness. Redis remains optional until the redirect-cache milestone.
+The PostgreSQL adapter uses `database/sql` with the `lib/pq` driver. The pool has bounded open/idle connections, connection lifetime and idle-time limits, and a startup ping timeout. PostgreSQL is required for readiness. The Redis adapter uses `go-redis` with bounded dial/read/write and per-operation timeouts; Redis is optional for readiness and cache failures fall back to PostgreSQL.
 
-Implemented repository contracts:
+Implemented persistence and cache contracts:
 - User repository: create, lookup by normalized email, lookup by UUID.
 - URL repository: create, lookup by public short code, owner-scoped keyset listing, owner-scoped idempotent deactivation.
+- Redirect cache: Redis get/set/delete using `short-url:v1:{code}` keys and JSON entries with absolute expiry.
 
 The initial migration enforces case-insensitive unique email, unique short codes, user-to-URL foreign keys, URL length/expiry checks, and indexes for short-code lookup, owner listings, and active expirations.
 
@@ -231,7 +232,7 @@ Never accept user_id from the request body as an ownership authority.
 7. Enqueue a click record for analytics without waiting for aggregation to finish.
 8. Return HTTP 302 with Location set to the original URL.
 
-A Redis failure is treated as a cache miss. PostgreSQL remains authoritative. A cached record must still be checked against its absolute expires_at before redirecting.
+A Redis failure is treated as a cache miss. PostgreSQL remains authoritative. A cached record must still be checked against its absolute expires_at before redirecting. Cache reads/writes/deletes use bounded timeouts and do not retry indefinitely. The click-recorder port is enqueue-only; durable aggregation is implemented in the analytics milestone.
 
 ### Deactivate a link
 
@@ -243,7 +244,7 @@ A Redis failure is treated as a cache miss. PostgreSQL remains authoritative. A 
 
 ### Record analytics
 
-The redirect handler submits a small event to a bounded in-process queue. A worker batches events and atomically increments UTC daily aggregates in PostgreSQL. If the queue is full, the event is dropped and a metric is incremented; a process crash can lose events still in memory. Analytics are therefore best-effort in the MVP and must never cause a successful redirect to fail. A durable queue can be considered later if requirements demand it.
+The redirect service calls an enqueue-only click-recorder interface. In this redirect milestone, the runtime adapter is intentionally a no-op; the analytics milestone will replace it with a bounded in-process queue. That worker should batch events and atomically increment UTC daily aggregates in PostgreSQL. If the queue is full, the event should be dropped and a metric incremented; a process crash can lose events still in memory. Analytics will be best-effort in the MVP and must never cause a successful redirect to fail. A durable queue can be considered later if requirements demand it.
 
 ## 10. Redis cache policy
 
@@ -281,7 +282,7 @@ The authentication application service is implemented in `internal/auth`. Public
 - `auth.Middleware` reads only the Bearer token, validates it, and places the signed subject in request context. Future protected handlers must read the user ID from this context and must not accept ownership from the request body.
 - Refresh tokens, password reset, email verification, and social login remain out of scope.
 
-The implementation is deliberately separated from URL creation: Phase A is complete before the public URL-creation endpoint is added in the next milestone.
+The implementation was deliberately separated from URL creation: Phase A was completed before the public URL-creation endpoint was added.
 
 ## 12. HTTP behavior and errors
 

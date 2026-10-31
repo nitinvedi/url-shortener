@@ -24,13 +24,13 @@ type DependencyCheck struct {
 // NewHandler builds the HTTP handler. Dependency checks can be added as
 // PostgreSQL and Redis clients are introduced in later implementation steps.
 func NewHandler(logger *slog.Logger, checks ...DependencyCheck) http.Handler {
-	return newHandler(logger, nil, nil, nil, "", checks...)
+	return newHandler(logger, nil, nil, nil, nil, "", checks...)
 }
 
 // NewHandlerWithAuth registers public authentication endpoints alongside health
 // routes. Protected business routes are added in later milestones.
 func NewHandlerWithAuth(logger *slog.Logger, authService *auth.Service, checks ...DependencyCheck) http.Handler {
-	return newHandler(logger, authService, nil, nil, "", checks...)
+	return newHandler(logger, authService, nil, nil, nil, "", checks...)
 }
 
 // NewHandlerWithServices registers authentication and the protected URL
@@ -44,7 +44,21 @@ func NewHandlerWithServices(
 	publicBaseURL string,
 	checks ...DependencyCheck,
 ) http.Handler {
-	return newHandler(logger, authService, tokens, urlCreator, publicBaseURL, checks...)
+	return newHandler(logger, authService, tokens, urlCreator, nil, publicBaseURL, checks...)
+}
+
+// NewHandlerWithRedirects registers the public redirect route in addition to
+// registration, login, and authenticated URL creation routes.
+func NewHandlerWithRedirects(
+	logger *slog.Logger,
+	authService *auth.Service,
+	tokens auth.TokenValidator,
+	urlCreator URLCreator,
+	redirector URLRedirector,
+	publicBaseURL string,
+	checks ...DependencyCheck,
+) http.Handler {
+	return newHandler(logger, authService, tokens, urlCreator, redirector, publicBaseURL, checks...)
 }
 
 func newHandler(
@@ -52,6 +66,7 @@ func newHandler(
 	authService *auth.Service,
 	tokens auth.TokenValidator,
 	urlCreator URLCreator,
+	redirector URLRedirector,
 	publicBaseURL string,
 	checks ...DependencyCheck,
 ) http.Handler {
@@ -70,6 +85,12 @@ func newHandler(
 			logger:        logger,
 		}
 		mux.Handle("POST /api/v1/urls", auth.Middleware(tokens, http.HandlerFunc(urlHandler.create)))
+	}
+	if redirector != nil {
+		mux.Handle("GET /{code}", http.HandlerFunc((&redirectHTTPHandler{
+			service: redirector,
+			logger:  logger,
+		}).redirect))
 	}
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})

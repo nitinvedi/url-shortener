@@ -17,6 +17,12 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 	if cfg.PublicBaseURL != "http://localhost:8080" {
 		t.Errorf("PublicBaseURL = %q, want http://localhost:8080", cfg.PublicBaseURL)
 	}
+	if cfg.RedisURL != "redis://localhost:6379/0" || cfg.RedisDialTimeout != time.Second ||
+		cfg.RedisReadTimeout != 100*time.Millisecond || cfg.RedisWriteTimeout != 100*time.Millisecond ||
+		cfg.RedisCacheTimeout != 100*time.Millisecond {
+		t.Errorf("unexpected Redis defaults: url=%q dial=%s read=%s write=%s operation=%s",
+			cfg.RedisURL, cfg.RedisDialTimeout, cfg.RedisReadTimeout, cfg.RedisWriteTimeout, cfg.RedisCacheTimeout)
+	}
 	if cfg.ReadHeaderTimeout != 5*time.Second || cfg.ReadTimeout != 10*time.Second ||
 		cfg.WriteTimeout != 15*time.Second || cfg.IdleTimeout != 60*time.Second ||
 		cfg.ShutdownTimeout != 10*time.Second {
@@ -40,6 +46,11 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	values := map[string]string{
 		"HTTP_ADDR":             "127.0.0.1:9090",
 		"PUBLIC_BASE_URL":       "https://sho.rt",
+		"REDIS_URL":             "rediss://cache-user:cache-pass@redis.internal:6380/2",
+		"REDIS_DIAL_TIMEOUT":    "2s",
+		"REDIS_READ_TIMEOUT":    "150ms",
+		"REDIS_WRITE_TIMEOUT":   "175ms",
+		"REDIS_CACHE_TIMEOUT":   "200ms",
 		"HTTP_READ_TIMEOUT":     "20s",
 		"HTTP_SHUTDOWN_TIMEOUT": "3s",
 		"LOG_LEVEL":             "DEBUG",
@@ -59,6 +70,11 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	}
 	if cfg.HTTPAddr != "127.0.0.1:9090" || cfg.PublicBaseURL != "https://sho.rt" {
 		t.Errorf("unexpected endpoint configuration: addr=%q base=%q", cfg.HTTPAddr, cfg.PublicBaseURL)
+	}
+	if cfg.RedisURL != values["REDIS_URL"] || cfg.RedisDialTimeout != 2*time.Second ||
+		cfg.RedisReadTimeout != 150*time.Millisecond || cfg.RedisWriteTimeout != 175*time.Millisecond ||
+		cfg.RedisCacheTimeout != 200*time.Millisecond {
+		t.Errorf("unexpected Redis configuration: %+v", cfg)
 	}
 	if cfg.ReadTimeout != 20*time.Second || cfg.ShutdownTimeout != 3*time.Second {
 		t.Error("unexpected HTTP timeout overrides")
@@ -102,6 +118,10 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "public URL with credentials", values: map[string]string{"PUBLIC_BASE_URL": "https://user:pass@sho.rt"}},
 		{name: "public URL with path", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt/short"}},
 		{name: "public URL with query", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt?x=1"}},
+		{name: "unsupported Redis scheme", values: map[string]string{"REDIS_URL": "http://redis:6379/0"}},
+		{name: "Redis host missing", values: map[string]string{"REDIS_URL": "redis:///0"}},
+		{name: "invalid Redis database index", values: map[string]string{"REDIS_URL": "redis://localhost/not-a-number"}},
+		{name: "zero Redis timeout", values: map[string]string{"REDIS_READ_TIMEOUT": "0s"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
