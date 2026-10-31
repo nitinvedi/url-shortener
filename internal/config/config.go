@@ -21,12 +21,12 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 	LogLevel          slog.Level
 
-	DatabaseURL          string
-	DBMaxOpenConns       int
-	DBMaxIdleConns       int
-	DBConnMaxLifetime    time.Duration
-	DBConnMaxIdleTime    time.Duration
-	DBConnectTimeout     time.Duration
+	DatabaseURL       string
+	DBMaxOpenConns    int
+	DBMaxIdleConns    int
+	DBConnMaxLifetime time.Duration
+	DBConnMaxIdleTime time.Duration
+	DBConnectTimeout  time.Duration
 }
 
 // Load reads configuration from the process environment.
