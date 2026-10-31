@@ -82,7 +82,7 @@ func (m *TokenManager) Issue(subject string) (string, time.Time, error) {
 	}
 	signingInput := headerPart + "." + claimsPart
 	signature := m.sign(signingInput)
-	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature), expiresAt, nil
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(signature), time.Unix(claims.ExpiresAt, 0).UTC(), nil
 }
 
 func (m *TokenManager) Validate(raw string) (TokenClaims, error) {
