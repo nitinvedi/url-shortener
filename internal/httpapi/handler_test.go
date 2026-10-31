@@ -25,7 +25,7 @@ func TestHealthzReturnsOK(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
-	if got := strings.TrimSpace(recorder.Body.String()); got != `{"status":"ok"}` {
+	if got := strings.TrimSpace(recorder.Body.String()); got != "{\"status\":\"ok\"}" {
 		t.Errorf("body = %s", got)
 	}
 	if recorder.Header().Get("X-Request-ID") == "" {
@@ -35,7 +35,8 @@ func TestHealthzReturnsOK(t *testing.T) {
 
 func TestReadyzWithHealthyDependencies(t *testing.T) {
 	handler := NewHandler(testLogger(), DependencyCheck{
-		Name: "postgres",
+		Name:     "postgres",
+		Required: true,
 		Check: func(context.Context) error {
 			return nil
 		},
@@ -49,14 +50,15 @@ func TestReadyzWithHealthyDependencies(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"status":"ready"`) || !strings.Contains(body, `"postgres":"ok"`) {
+	if !strings.Contains(body, "\"status\":\"ready\"") || !strings.Contains(body, "\"postgres\":\"ok\"") {
 		t.Errorf("unexpected response body: %s", body)
 	}
 }
 
-func TestReadyzReturns503WhenDependencyFails(t *testing.T) {
+func TestReadyzReturns503WhenRequiredDependencyFails(t *testing.T) {
 	handler := NewHandler(testLogger(), DependencyCheck{
-		Name: "postgres",
+		Name:     "postgres",
+		Required: true,
 		Check: func(context.Context) error {
 			return errors.New("database unavailable")
 		},
@@ -70,7 +72,29 @@ func TestReadyzReturns503WhenDependencyFails(t *testing.T) {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusServiceUnavailable)
 	}
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"status":"not_ready"`) || !strings.Contains(body, `"postgres":"degraded"`) {
+	if !strings.Contains(body, "\"status\":\"not_ready\"") || !strings.Contains(body, "\"postgres\":\"degraded\"") {
+		t.Errorf("unexpected response body: %s", body)
+	}
+}
+
+func TestReadyzRemainsReadyWhenOptionalDependencyFails(t *testing.T) {
+	handler := NewHandler(testLogger(), DependencyCheck{
+		Name:     "redis",
+		Required: false,
+		Check: func(context.Context) error {
+			return errors.New("cache unavailable")
+		},
+	})
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+	handler.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	body := recorder.Body.String()
+	if !strings.Contains(body, "\"status\":\"ready\"") || !strings.Contains(body, "\"redis\":\"degraded\"") {
 		t.Errorf("unexpected response body: %s", body)
 	}
 }
