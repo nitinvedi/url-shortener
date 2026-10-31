@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("user not found")
+	ErrNotFound   = errors.New("user not found")
 	ErrEmailTaken = errors.New("email already registered")
 )
 
