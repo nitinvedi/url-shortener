@@ -14,6 +14,7 @@ import (
 	"github.com/nitinvedi/url-shortener/internal/auth"
 	"github.com/nitinvedi/url-shortener/internal/config"
 	"github.com/nitinvedi/url-shortener/internal/httpapi"
+	"github.com/nitinvedi/url-shortener/internal/link"
 	"github.com/nitinvedi/url-shortener/internal/storage/postgres"
 )
 
@@ -67,12 +68,23 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize authentication service: %w", err)
 	}
+	linkService, err := link.NewService(postgres.NewLinkRepository(db))
+	if err != nil {
+		return fmt.Errorf("initialize URL service: %w", err)
+	}
 
-	handler := httpapi.NewHandlerWithAuth(logger, authService, httpapi.DependencyCheck{
-		Name:     "postgres",
-		Required: true,
-		Check:    db.PingContext,
-	})
+	handler := httpapi.NewHandlerWithServices(
+		logger,
+		authService,
+		tokenManager,
+		linkService,
+		cfg.PublicBaseURL,
+		httpapi.DependencyCheck{
+			Name:     "postgres",
+			Required: true,
+			Check:    db.PingContext,
+		},
+	)
 
 	server := &http.Server{
 		Addr:              cfg.HTTPAddr,

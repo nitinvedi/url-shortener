@@ -11,24 +11,16 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFrom() error = %v", err)
 	}
-
 	if cfg.HTTPAddr != ":8080" {
 		t.Errorf("HTTPAddr = %q, want :8080", cfg.HTTPAddr)
 	}
-	if cfg.ReadHeaderTimeout != 5*time.Second {
-		t.Errorf("ReadHeaderTimeout = %s, want 5s", cfg.ReadHeaderTimeout)
+	if cfg.PublicBaseURL != "http://localhost:8080" {
+		t.Errorf("PublicBaseURL = %q, want http://localhost:8080", cfg.PublicBaseURL)
 	}
-	if cfg.ReadTimeout != 10*time.Second {
-		t.Errorf("ReadTimeout = %s, want 10s", cfg.ReadTimeout)
-	}
-	if cfg.WriteTimeout != 15*time.Second {
-		t.Errorf("WriteTimeout = %s, want 15s", cfg.WriteTimeout)
-	}
-	if cfg.IdleTimeout != 60*time.Second {
-		t.Errorf("IdleTimeout = %s, want 60s", cfg.IdleTimeout)
-	}
-	if cfg.ShutdownTimeout != 10*time.Second {
-		t.Errorf("ShutdownTimeout = %s, want 10s", cfg.ShutdownTimeout)
+	if cfg.ReadHeaderTimeout != 5*time.Second || cfg.ReadTimeout != 10*time.Second ||
+		cfg.WriteTimeout != 15*time.Second || cfg.IdleTimeout != 60*time.Second ||
+		cfg.ShutdownTimeout != 10*time.Second {
+		t.Error("unexpected HTTP timeout defaults")
 	}
 	if cfg.LogLevel != slog.LevelInfo {
 		t.Errorf("LogLevel = %v, want info", cfg.LogLevel)
@@ -40,13 +32,14 @@ func TestLoadFromUsesSafeDefaults(t *testing.T) {
 		t.Errorf("unexpected default pool sizes: max open %d, max idle %d", cfg.DBMaxOpenConns, cfg.DBMaxIdleConns)
 	}
 	if len(cfg.JWTSigningKey) < 32 || cfg.JWTIssuer != "url-shortener" || cfg.JWTAudience != "url-shortener-api" {
-		t.Errorf("unexpected JWT defaults")
+		t.Error("unexpected JWT defaults")
 	}
 }
 
 func TestLoadFromParsesOverrides(t *testing.T) {
 	values := map[string]string{
 		"HTTP_ADDR":             "127.0.0.1:9090",
+		"PUBLIC_BASE_URL":       "https://sho.rt",
 		"HTTP_READ_TIMEOUT":     "20s",
 		"HTTP_SHUTDOWN_TIMEOUT": "3s",
 		"LOG_LEVEL":             "DEBUG",
@@ -64,15 +57,11 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadFrom() error = %v", err)
 	}
-
-	if cfg.HTTPAddr != "127.0.0.1:9090" {
-		t.Errorf("HTTPAddr = %q", cfg.HTTPAddr)
+	if cfg.HTTPAddr != "127.0.0.1:9090" || cfg.PublicBaseURL != "https://sho.rt" {
+		t.Errorf("unexpected endpoint configuration: addr=%q base=%q", cfg.HTTPAddr, cfg.PublicBaseURL)
 	}
-	if cfg.ReadTimeout != 20*time.Second {
-		t.Errorf("ReadTimeout = %s, want 20s", cfg.ReadTimeout)
-	}
-	if cfg.ShutdownTimeout != 3*time.Second {
-		t.Errorf("ShutdownTimeout = %s, want 3s", cfg.ShutdownTimeout)
+	if cfg.ReadTimeout != 20*time.Second || cfg.ShutdownTimeout != 3*time.Second {
+		t.Error("unexpected HTTP timeout overrides")
 	}
 	if cfg.LogLevel != slog.LevelDebug {
 		t.Errorf("LogLevel = %v, want debug", cfg.LogLevel)
@@ -84,10 +73,10 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 		t.Errorf("unexpected pool sizes: max open %d, max idle %d", cfg.DBMaxOpenConns, cfg.DBMaxIdleConns)
 	}
 	if cfg.DBConnMaxLifetime != time.Hour || cfg.DBConnMaxIdleTime != 2*time.Minute || cfg.DBConnectTimeout != 8*time.Second {
-		t.Errorf("unexpected database duration configuration")
+		t.Error("unexpected database duration configuration")
 	}
 	if cfg.JWTSigningKey != values["JWT_SIGNING_KEY"] || cfg.JWTIssuer != values["JWT_ISSUER"] || cfg.JWTAudience != values["JWT_AUDIENCE"] {
-		t.Errorf("unexpected JWT configuration")
+		t.Error("unexpected JWT configuration")
 	}
 }
 
@@ -109,11 +98,14 @@ func TestLoadFromRejectsInvalidConfiguration(t *testing.T) {
 		{name: "idle exceeds open", values: map[string]string{"DB_MAX_OPEN_CONNS": "4", "DB_MAX_IDLE_CONNS": "5"}},
 		{name: "invalid connection lifetime", values: map[string]string{"DB_CONN_MAX_LIFETIME": "-1m"}},
 		{name: "short JWT signing key", values: map[string]string{"JWT_SIGNING_KEY": "short"}},
+		{name: "unsupported public URL scheme", values: map[string]string{"PUBLIC_BASE_URL": "ftp://sho.rt"}},
+		{name: "public URL with credentials", values: map[string]string{"PUBLIC_BASE_URL": "https://user:pass@sho.rt"}},
+		{name: "public URL with path", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt/short"}},
+		{name: "public URL with query", values: map[string]string{"PUBLIC_BASE_URL": "https://sho.rt?x=1"}},
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			_, err := LoadFrom(func(key string) string { return tt.values[key] })
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := LoadFrom(func(key string) string { return test.values[key] })
 			if err == nil {
 				t.Fatal("LoadFrom() expected an error")
 			}

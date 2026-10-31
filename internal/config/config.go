@@ -14,6 +14,7 @@ import (
 // Config contains validated process-level application settings.
 type Config struct {
 	HTTPAddr          string
+	PublicBaseURL     string
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -47,6 +48,7 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 
 	cfg := Config{
 		HTTPAddr:          valueOrDefault(getenv, "HTTP_ADDR", ":8080"),
+		PublicBaseURL:     valueOrDefault(getenv, "PUBLIC_BASE_URL", "http://localhost:8080"),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -68,6 +70,9 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 
 	if err := validateListenAddress(cfg.HTTPAddr); err != nil {
 		return Config{}, fmt.Errorf("invalid HTTP_ADDR: %w", err)
+	}
+	if err := validatePublicBaseURL(cfg.PublicBaseURL); err != nil {
+		return Config{}, fmt.Errorf("invalid PUBLIC_BASE_URL: %w", err)
 	}
 	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
 		return Config{}, fmt.Errorf("invalid DATABASE_URL: %w", err)
@@ -177,6 +182,27 @@ func validateListenAddress(address string) error {
 	portNumber, err := strconv.Atoi(port)
 	if err != nil || portNumber < 1 || portNumber > 65535 {
 		return fmt.Errorf("port must be an integer between 1 and 65535")
+	}
+	return nil
+}
+
+func validatePublicBaseURL(raw string) error {
+	if raw == "" || strings.TrimSpace(raw) != raw {
+		return fmt.Errorf("must be an absolute HTTP or HTTPS origin")
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil || !parsed.IsAbs() || parsed.Opaque != "" {
+		return fmt.Errorf("must be an absolute HTTP or HTTPS origin")
+	}
+	scheme := strings.ToLower(parsed.Scheme)
+	if (scheme != "http" && scheme != "https") ||
+		parsed.Hostname() == "" ||
+		parsed.User != nil ||
+		(parsed.Path != "" && parsed.Path != "/") ||
+		parsed.RawQuery != "" ||
+		parsed.ForceQuery ||
+		parsed.Fragment != "" {
+		return fmt.Errorf("must be an HTTP or HTTPS origin without credentials, path, query, or fragment")
 	}
 	return nil
 }
