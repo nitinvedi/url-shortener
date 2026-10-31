@@ -1,0 +1,9 @@
+.git
+.github
+.env
+.env.*.local
+.idea
+.vscode
+*.test
+*.out
+coverage.*
