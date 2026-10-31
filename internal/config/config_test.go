@@ -52,7 +52,7 @@ func TestLoadFromParsesOverrides(t *testing.T) {
 		"DB_MAX_IDLE_CONNS":     "10",
 		"DB_CONN_MAX_LIFETIME":  "1h",
 		"DB_CONN_MAX_IDLE_TIME": "2m",
-		"DB_CONNECT_TIMEOUT":   "8s",
+		"DB_CONNECT_TIMEOUT":    "8s",
 	}
 	cfg, err := LoadFrom(func(key string) string { return values[key] })
 	if err != nil {
