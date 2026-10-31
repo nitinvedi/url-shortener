@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nitinvedi/url-shortener/internal/auth"
+	rediscache "github.com/nitinvedi/url-shortener/internal/cache/redis"
 	"github.com/nitinvedi/url-shortener/internal/config"
 	"github.com/nitinvedi/url-shortener/internal/httpapi"
 	"github.com/nitinvedi/url-shortener/internal/link"
@@ -68,21 +69,54 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("initialize authentication service: %w", err)
 	}
+
+	redisStore, err := rediscache.New(
+		cfg.RedisURL,
+		cfg.RedisDialTimeout,
+		cfg.RedisReadTimeout,
+		cfg.RedisWriteTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize Redis cache client: %w", err)
+	}
+	defer func() {
+		if err := redisStore.Close(); err != nil {
+			logger.Warn("close Redis client failed", "error", err)
+		}
+	}()
+
+	redirectService, err := link.NewRedirectServiceWithClock(
+		postgres.NewLinkRepository(db),
+		redisStore,
+		link.NoopClickRecorder{},
+		logger,
+		nil,
+		cfg.RedisCacheTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("initialize redirect service: %w", err)
+	}
 	linkService, err := link.NewService(postgres.NewLinkRepository(db))
 	if err != nil {
 		return fmt.Errorf("initialize URL service: %w", err)
 	}
 
-	handler := httpapi.NewHandlerWithServices(
+	handler := httpapi.NewHandlerWithRedirects(
 		logger,
 		authService,
 		tokenManager,
 		linkService,
+		redirectService,
 		cfg.PublicBaseURL,
 		httpapi.DependencyCheck{
 			Name:     "postgres",
 			Required: true,
 			Check:    db.PingContext,
+		},
+		httpapi.DependencyCheck{
+			Name:     "redis",
+			Required: false,
+			Check:    redisStore.Ping,
 		},
 	)
 

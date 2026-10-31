@@ -13,6 +13,7 @@ services:
       JWT_ISSUER: "${JWT_ISSUER:-url-shortener}"
       JWT_AUDIENCE: "${JWT_AUDIENCE:-url-shortener-api}"
       DATABASE_URL: "postgres://${POSTGRES_USER:-shortener}:${POSTGRES_PASSWORD:-local_dev_password}@postgres:5432/${POSTGRES_DB:-shortener}?sslmode=disable"
+      REDIS_URL: "${REDIS_URL:-redis://redis:6379/0}"
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:

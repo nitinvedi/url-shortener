@@ -15,6 +15,11 @@ import (
 type Config struct {
 	HTTPAddr          string
 	PublicBaseURL     string
+	RedisURL          string
+	RedisDialTimeout  time.Duration
+	RedisReadTimeout  time.Duration
+	RedisWriteTimeout time.Duration
+	RedisCacheTimeout time.Duration
 	ReadHeaderTimeout time.Duration
 	ReadTimeout       time.Duration
 	WriteTimeout      time.Duration
@@ -49,6 +54,11 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	cfg := Config{
 		HTTPAddr:          valueOrDefault(getenv, "HTTP_ADDR", ":8080"),
 		PublicBaseURL:     valueOrDefault(getenv, "PUBLIC_BASE_URL", "http://localhost:8080"),
+		RedisURL:          valueOrDefault(getenv, "REDIS_URL", "redis://localhost:6379/0"),
+		RedisDialTimeout:  1 * time.Second,
+		RedisReadTimeout:  100 * time.Millisecond,
+		RedisWriteTimeout: 100 * time.Millisecond,
+		RedisCacheTimeout: 100 * time.Millisecond,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -73,6 +83,9 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 	}
 	if err := validatePublicBaseURL(cfg.PublicBaseURL); err != nil {
 		return Config{}, fmt.Errorf("invalid PUBLIC_BASE_URL: %w", err)
+	}
+	if err := validateRedisURL(cfg.RedisURL); err != nil {
+		return Config{}, fmt.Errorf("invalid REDIS_URL: %w", err)
 	}
 	if err := validateDatabaseURL(cfg.DatabaseURL); err != nil {
 		return Config{}, fmt.Errorf("invalid DATABASE_URL: %w", err)
@@ -107,6 +120,18 @@ func LoadFrom(getenv func(string) string) (Config, error) {
 		return Config{}, err
 	}
 	if cfg.DBConnectTimeout, err = durationOrDefault(getenv, "DB_CONNECT_TIMEOUT", cfg.DBConnectTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.RedisDialTimeout, err = durationOrDefault(getenv, "REDIS_DIAL_TIMEOUT", cfg.RedisDialTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.RedisReadTimeout, err = durationOrDefault(getenv, "REDIS_READ_TIMEOUT", cfg.RedisReadTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.RedisWriteTimeout, err = durationOrDefault(getenv, "REDIS_WRITE_TIMEOUT", cfg.RedisWriteTimeout); err != nil {
+		return Config{}, err
+	}
+	if cfg.RedisCacheTimeout, err = durationOrDefault(getenv, "REDIS_CACHE_TIMEOUT", cfg.RedisCacheTimeout); err != nil {
 		return Config{}, err
 	}
 
@@ -203,6 +228,27 @@ func validatePublicBaseURL(raw string) error {
 		parsed.ForceQuery ||
 		parsed.Fragment != "" {
 		return fmt.Errorf("must be an HTTP or HTTPS origin without credentials, path, query, or fragment")
+	}
+	return nil
+}
+
+func validateRedisURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return err
+	}
+	if (parsed.Scheme != "redis" && parsed.Scheme != "rediss") || parsed.Hostname() == "" {
+		return fmt.Errorf("scheme must be redis or rediss and a host is required")
+	}
+	if parsed.Fragment != "" {
+		return fmt.Errorf("fragments are not supported")
+	}
+	database := strings.Trim(parsed.Path, "/")
+	if database != "" {
+		index, err := strconv.Atoi(database)
+		if err != nil || index < 0 {
+			return fmt.Errorf("database path must be a non-negative integer")
+		}
 	}
 	return nil
 }
