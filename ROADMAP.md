@@ -31,6 +31,11 @@ Client ────────────▶│ Go HTTP API          │
 
 Keep the MVP as one deployable service with clear internal boundaries. Do not add Kafka, Kubernetes, microservices, or a distributed ID generator until measured requirements justify them.
 
+## Detailed design documents
+
+- [Architecture](./docs/architecture.md) — system boundaries, modules, data model, request flows, security, cache behavior, and operational decisions.
+- [HTTP API contract](./docs/api.md) — endpoint behavior, JSON examples, validation, authentication, status codes, and error format.
+
 ## Technology choices
 
 | Area | Choice | Reason |
@@ -62,20 +67,21 @@ Use a consistent JSON error shape for API routes. Redirects are public; manageme
 ## Delivery milestones
 
 ### Milestone 1 — Foundation
-- [ ] Agree on system boundaries and API contract — [#1 Architecture and API contract](https://github.com/nitinvedi/url-shortener/issues/1)
+- [x] Agree on system boundaries and API contract — [#1 Architecture and API contract](https://github.com/nitinvedi/url-shortener/issues/1)
 - [ ] Bootstrap server, configuration, logging, health checks, and Docker Compose — [#2 Service foundation](https://github.com/nitinvedi/url-shortener/issues/2)
 - [ ] Create PostgreSQL schema, migrations, and repository layer — [#3 Persistence](https://github.com/nitinvedi/url-shortener/issues/3)
 
 **Exit criteria:** the service starts locally, dependencies are reproducible, and database migrations run from an empty database.
 
-### Milestone 2 — Core shortening and redirecting
+### Milestone 2 — Identity and core shortening
+- [ ] Implement registration, login, token validation, and authentication middleware — [#6 Authentication and ownership](https://github.com/nitinvedi/url-shortener/issues/6). Build authentication before exposing owner-scoped URL creation.
 - [ ] Create URLs, validate destinations, and generate random Base62 codes — [#4 URL creation](https://github.com/nitinvedi/url-shortener/issues/4)
 - [ ] Resolve codes and redirect using Redis cache-aside — [#5 Redirect path](https://github.com/nitinvedi/url-shortener/issues/5)
 
-**Exit criteria:** a valid URL can be shortened and redirected; unknown, expired, and inactive codes behave consistently; Redis failure does not take down redirects when PostgreSQL is healthy.
+**Exit criteria:** users can authenticate; an authenticated user can create a short URL; a public visitor can resolve it; unknown, expired, and inactive codes behave consistently; Redis failure does not take down redirects when PostgreSQL is healthy.
 
-### Milestone 3 — Accounts and product features
-- [ ] Add registration, login, authentication middleware, and owner-scoped management — [#6 Authentication and ownership](https://github.com/nitinvedi/url-shortener/issues/6)
+### Milestone 3 — Ownership and product features
+- [ ] Complete owner-scoped URL listing, metadata, and deactivation as part of [#6 Authentication and ownership](https://github.com/nitinvedi/url-shortener/issues/6)
 - [ ] Add click aggregation and URL statistics — [#7 Analytics](https://github.com/nitinvedi/url-shortener/issues/7)
 
 **Exit criteria:** users can manage only their own links; statistics are available only to the owner; public redirects stay unauthenticated.
@@ -128,4 +134,4 @@ Custom domains, QR codes, team accounts, bulk imports, geo/device analytics, Kaf
 
 ## Working order
 
-Start with issues **#1 → #2 → #3 → #4 → #5**. Do not begin analytics or scale optimization before the create-and-redirect flow is reliable.
+Start with **#1 → #2 → #3 → authentication in #6 → #4 → #5**. Complete the remaining ownership work in #6 after URL persistence/use cases exist. Do not begin analytics or scale optimization before the create-and-redirect flow is reliable.
