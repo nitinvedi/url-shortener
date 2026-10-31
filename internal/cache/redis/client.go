@@ -19,7 +19,7 @@ const maxCachedRedirectBytes = 8 * 1024
 // operation receives its own deadline so a stalled cache cannot hold up the
 // PostgreSQL fallback for the full HTTP request timeout.
 type Client struct {
-	client          *redislib.Client
+	client           *redislib.Client
 	operationTimeout time.Duration
 }
 

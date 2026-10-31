@@ -33,9 +33,9 @@ type Config struct {
 	JWTIssuer     string
 	JWTAudience   string
 
-	RedisAddr            string
-	RedisPassword        string
-	RedisDB              int
+	RedisAddr             string
+	RedisPassword         string
+	RedisDB               int
 	RedisOperationTimeout time.Duration
 }
 

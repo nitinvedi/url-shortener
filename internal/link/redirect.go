@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	MaxRedirectCacheTTL = 5 * time.Minute
+	MaxRedirectCacheTTL     = 5 * time.Minute
 	cacheExpirySafetyMargin = time.Second
 )
 

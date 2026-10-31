@@ -107,8 +107,8 @@ func activeRedirectURL(expiry *time.Time) *ShortURL {
 	return &ShortURL{
 		ID: "url-123", UserID: "owner-123", ShortCode: "Ab12Cd34Ef",
 		OriginalURL: "https://example.com/path?from=short",
-		CreatedAt: time.Date(2026, 10, 31, 0, 0, 0, 0, time.UTC),
-		ExpiresAt: cloneTime(expiry), IsActive: true,
+		CreatedAt:   time.Date(2026, 10, 31, 0, 0, 0, 0, time.UTC),
+		ExpiresAt:   cloneTime(expiry), IsActive: true,
 	}
 }
 
